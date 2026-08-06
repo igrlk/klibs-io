@@ -15,6 +15,9 @@ import java.io.StringReader
 
 /**
  * Creates the project + package OpenSearch indices with their mappings on startup if absent.
+ *
+ * TEMPORARY: runs after `ApplicationReadyEvent`, so requests arriving in that window hit a
+ * missing index. The real solution will gate readiness on the index.
  */
 @Component
 @ConditionalOnProperty("klibs.search.opensearch.enabled", havingValue = "true")
