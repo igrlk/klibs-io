@@ -9,6 +9,8 @@ import io.klibs.core.search.controller.SearchSort
 import io.klibs.core.search.dto.repository.SearchPackageResult
 import io.klibs.core.search.configuration.properties.OpenSearchProperties
 import io.klibs.core.search.opensearch.OpenSearchQueryBuilder
+import io.klibs.core.search.opensearch.PackageFields
+import io.klibs.core.search.opensearch.keyword
 import org.opensearch.client.opensearch.OpenSearchClient
 import org.opensearch.client.opensearch._types.SortOptions
 import org.opensearch.client.opensearch._types.SortOrder
@@ -52,15 +54,15 @@ class PackageSearchRepositoryOpenSearch(
     override fun shouldClauses(query: String): List<Query> = buildList {
         val multiWord = query.contains(' ')
         with(OpenSearchQueryBuilder) {
-            add(match("group_id", query, 4))
-            add(match("artifact_id", query, 4))
-            add(match("owner_login", query, 4))
-            add(match("latest_description", query, 2))
-            add(fuzzy("group_id", query, 2))
-            add(fuzzy("artifact_id", query, 2))
-            add(phrasePrefix("group_id", query, 2))
-            add(phrasePrefix("artifact_id", query, 2))
-            if (multiWord) add(phrase("artifact_id", query, 4))
+            add(match(PackageFields.GROUP_ID, query, 4))
+            add(match(PackageFields.ARTIFACT_ID, query, 4))
+            add(match(PackageFields.OWNER_LOGIN, query, 4))
+            add(match(PackageFields.LATEST_DESCRIPTION, query, 2))
+            add(fuzzy(PackageFields.GROUP_ID, query, 2))
+            add(fuzzy(PackageFields.ARTIFACT_ID, query, 2))
+            add(phrasePrefix(PackageFields.GROUP_ID, query, 2))
+            add(phrasePrefix(PackageFields.ARTIFACT_ID, query, 2))
+            if (multiWord) add(phrase(PackageFields.ARTIFACT_ID, query, 4))
         }
     }
 
@@ -68,25 +70,30 @@ class PackageSearchRepositoryOpenSearch(
         val primary = if (sortBy == SearchSort.RELEVANCY && isQueryPresent) {
             scoreDesc()
         } else {
-            fieldSort("release_ts", SortOrder.Desc)
+            fieldSort(PackageFields.RELEASE_TS, SortOrder.Desc)
         }
-        return listOf(primary, fieldSort("group_id.keyword", SortOrder.Asc), fieldSort("artifact_id.keyword", SortOrder.Asc))
+        // group_id + artifact_id are there to make sorting stable
+        return listOf(
+            primary,
+            fieldSort(PackageFields.GROUP_ID.keyword, SortOrder.Asc),
+            fieldSort(PackageFields.ARTIFACT_ID.keyword, SortOrder.Asc),
+        )
     }
 
     override fun toResult(src: ObjectNode): SearchPackageResult {
-        val packageTargets = src.stringList("targets").map { t ->
+        val packageTargets = src.stringList(PackageFields.TARGETS).map { t ->
             PackageTarget(PackagePlatform.valueOf(t.substringBefore('_')), t.substringAfter('_', "").ifEmpty { null })
         }
         return SearchPackageResult(
-            groupId = src.get("group_id").asText(),
-            artifactId = src.get("artifact_id").asText(),
-            description = src.textOrNull("latest_description"),
-            ownerType = ScmOwnerType.findBySerializableName(src.get("owner_type").asText()),
-            ownerLogin = src.get("owner_login").asText(),
-            licenseName = src.textOrNull("latest_license_name"),
-            latestVersion = src.get("latest_version").asText(),
-            releaseTs = LocalDateTime.parse(src.get("release_ts").asText()).toInstant(ZoneOffset.UTC),
-            platforms = src.stringList("platforms").map { PackagePlatform.valueOf(it) },
+            groupId = src.get(PackageFields.GROUP_ID).asText(),
+            artifactId = src.get(PackageFields.ARTIFACT_ID).asText(),
+            description = src.textOrNull(PackageFields.LATEST_DESCRIPTION),
+            ownerType = ScmOwnerType.findBySerializableName(src.get(PackageFields.OWNER_TYPE).asText()),
+            ownerLogin = src.get(PackageFields.OWNER_LOGIN).asText(),
+            licenseName = src.textOrNull(PackageFields.LATEST_LICENSE_NAME),
+            latestVersion = src.get(PackageFields.LATEST_VERSION).asText(),
+            releaseTs = LocalDateTime.parse(src.get(PackageFields.RELEASE_TS).asText()).toInstant(ZoneOffset.UTC),
+            platforms = src.stringList(PackageFields.PLATFORMS).map { PackagePlatform.valueOf(it) },
             targetsList = packageTargets,
             targetsMap = packageTargets.filter { it.target != null }
                 .groupBy(
@@ -98,6 +105,6 @@ class PackageSearchRepositoryOpenSearch(
     }
 
     private companion object {
-        private val EXCLUDED_SOURCE_FIELDS = listOf("project_id", "latest_package_id")
+        private val EXCLUDED_SOURCE_FIELDS = listOf(PackageFields.PROJECT_ID, PackageFields.LATEST_PACKAGE_ID)
     }
 }

@@ -8,6 +8,8 @@ import io.klibs.core.search.controller.SearchSort
 import io.klibs.core.search.dto.repository.SearchProjectResult
 import io.klibs.core.search.configuration.properties.OpenSearchProperties
 import io.klibs.core.search.opensearch.OpenSearchQueryBuilder
+import io.klibs.core.search.opensearch.ProjectFields
+import io.klibs.core.search.opensearch.keyword
 import org.opensearch.client.opensearch.OpenSearchClient
 import org.opensearch.client.opensearch._types.SortOptions
 import org.opensearch.client.opensearch._types.SortOrder
@@ -55,29 +57,29 @@ class ProjectSearchRepositoryOpenSearch(
     override fun shouldClauses(query: String): List<Query> = buildList {
         val multiWord = query.contains(' ')
         with(OpenSearchQueryBuilder) {
-            add(match("owner_login", query, 4))
-            add(match("name", query, 4))
-            add(match("group_ids", query, 4))
-            add(match("artifact_ids", query, 4))
-            add(match("tags", query, 3))
-            add(match("project_description", query, 2))
-            add(match("repo_description", query, 2))
-            add(fuzzy("name", query, 2))
-            add(fuzzy("artifact_ids", query, 2))
-            add(phrasePrefix("name", query, 3))
-            add(phrasePrefix("owner_login", query, 3))
-            add(phrasePrefix("artifact_ids", query, 2))
-            add(phrasePrefix("group_ids", query, 2))
+            add(match(ProjectFields.OWNER_LOGIN, query, 4))
+            add(match(ProjectFields.NAME, query, 4))
+            add(match(ProjectFields.GROUP_IDS, query, 4))
+            add(match(ProjectFields.ARTIFACT_IDS, query, 4))
+            add(match(ProjectFields.TAGS, query, 3))
+            add(match(ProjectFields.PROJECT_DESCRIPTION, query, 2))
+            add(match(ProjectFields.REPO_DESCRIPTION, query, 2))
+            add(fuzzy(ProjectFields.NAME, query, 2))
+            add(fuzzy(ProjectFields.ARTIFACT_IDS, query, 2))
+            add(phrasePrefix(ProjectFields.NAME, query, 3))
+            add(phrasePrefix(ProjectFields.OWNER_LOGIN, query, 3))
+            add(phrasePrefix(ProjectFields.ARTIFACT_IDS, query, 2))
+            add(phrasePrefix(ProjectFields.GROUP_IDS, query, 2))
             if (multiWord) {
-                add(phrase("name", query, 6))
-                add(phrase("artifact_ids", query, 4))
+                add(phrase(ProjectFields.NAME, query, 6))
+                add(phrase(ProjectFields.ARTIFACT_IDS, query, 4))
             }
         }
     }
 
     private fun extraFilters(tags: List<String>, markers: List<String>): List<Query> = buildList {
-        tags.forEach { add(OpenSearchQueryBuilder.term("tags.keyword", it)) }
-        if (markers.isNotEmpty()) add(OpenSearchQueryBuilder.termsAny("markers", markers))
+        tags.forEach { add(OpenSearchQueryBuilder.term(ProjectFields.TAGS.keyword, it)) }
+        if (markers.isNotEmpty()) add(OpenSearchQueryBuilder.termsAny(ProjectFields.MARKERS, markers))
     }
 
     override fun sortOptions(sortBy: SearchSort, isQueryPresent: Boolean): List<SortOptions> {
@@ -85,35 +87,42 @@ class ProjectSearchRepositoryOpenSearch(
             // OSS health is not indexed in OpenSearch, so this sort cannot be served here.
             SearchSort.MOST_HEALTHY -> throw UnsupportedOperationException("$sortBy is not supported by OpenSearch")
             SearchSort.RELEVANCY if isQueryPresent -> scoreDesc()
-            SearchSort.MOST_DEPENDENTS -> fieldSort("dependent_count", SortOrder.Desc)
-            else -> fieldSort("stars", SortOrder.Desc)
+            SearchSort.MOST_DEPENDENTS -> fieldSort(ProjectFields.DEPENDENT_COUNT, SortOrder.Desc)
+            else -> fieldSort(ProjectFields.STARS, SortOrder.Desc)
         }
-        return listOf(primary, fieldSort("project_id", SortOrder.Asc))
+        // project_id is there to make sorting stable
+        return listOf(primary, fieldSort(ProjectFields.PROJECT_ID, SortOrder.Asc))
     }
 
     override fun toResult(src: ObjectNode): SearchProjectResult = SearchProjectResult(
-        id = src.get("project_id").asInt(),
-        name = src.get("name").asText(),
-        repoName = src.get("repo_name").asText(),
-        description = src.textOrNull("plain_description"),
-        vcsStars = src.get("stars").asInt(),
-        ownerType = ScmOwnerType.findBySerializableName(src.get("owner_type").asText()),
-        ownerLogin = src.get("owner_login").asText(),
-        licenseName = src.textOrNull("license_name"),
-        latestVersion = src.get("latest_version").asText(),
-        latestVersionPublishedAt = LocalDateTime.parse(src.get("latest_version_ts").asText()).toInstant(ZoneOffset.UTC),
-        platforms = src.stringList("platforms").map { PackagePlatform.valueOf(it) },
-        targets = src.stringList("targets"),
-        tags = src.stringList("tags"),
-        markers = src.stringList("markers"),
-        dependentCount = src.get("dependent_count").asInt(),
+        id = src.get(ProjectFields.PROJECT_ID).asInt(),
+        name = src.get(ProjectFields.NAME).asText(),
+        repoName = src.get(ProjectFields.REPO_NAME).asText(),
+        description = src.textOrNull(ProjectFields.PLAIN_DESCRIPTION),
+        vcsStars = src.get(ProjectFields.STARS).asInt(),
+        ownerType = ScmOwnerType.findBySerializableName(src.get(ProjectFields.OWNER_TYPE).asText()),
+        ownerLogin = src.get(ProjectFields.OWNER_LOGIN).asText(),
+        licenseName = src.textOrNull(ProjectFields.LICENSE_NAME),
+        latestVersion = src.get(ProjectFields.LATEST_VERSION).asText(),
+        latestVersionPublishedAt = LocalDateTime.parse(src.get(ProjectFields.LATEST_VERSION_TS).asText())
+            .toInstant(ZoneOffset.UTC),
+        platforms = src.stringList(ProjectFields.PLATFORMS).map { PackagePlatform.valueOf(it) },
+        targets = src.stringList(ProjectFields.TARGETS),
+        tags = src.stringList(ProjectFields.TAGS),
+        markers = src.stringList(ProjectFields.MARKERS),
+        dependentCount = src.get(ProjectFields.DEPENDENT_COUNT).asInt(),
         // Not indexed in OpenSearch, see sortOptions.
         ossHealthScore = null,
     )
 
     private companion object {
         private val EXCLUDED_SOURCE_FIELDS = listOf(
-            "packages", "project_description", "repo_description", "group_ids", "artifact_ids", "has_readme",
+            ProjectFields.PACKAGES,
+            ProjectFields.PROJECT_DESCRIPTION,
+            ProjectFields.REPO_DESCRIPTION,
+            ProjectFields.GROUP_IDS,
+            ProjectFields.ARTIFACT_IDS,
+            ProjectFields.HAS_README,
         )
     }
 }

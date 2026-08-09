@@ -22,10 +22,10 @@ object OpenSearchQueryBuilder {
     // - Stars have 2.5x more weight than Dependent_count
 
     private const val POPULARITY_SCRIPT =
-        "double d = doc['has_readme'].value ? 1.0 : 0.7; " +
+        "double d = doc['${ProjectFields.HAS_README}'].value ? 1.0 : 0.7; " +
                 "return 1 + (" +
-                "Math.log(doc['stars'].value + 1) * 0.5 + " +
-                "Math.log(doc['dependent_count'].value + 1) * 0.2" +
+                "Math.log(doc['${ProjectFields.STARS}'].value + 1) * 0.5 + " +
+                "Math.log(doc['${ProjectFields.DEPENDENT_COUNT}'].value + 1) * 0.2" +
                 ") * d;"
 
     // Word-bag match: OR over the query terms, order-insensitive, and a doc matching only some of
@@ -115,8 +115,8 @@ object OpenSearchQueryBuilder {
         targetFilters: Map<TargetGroup, Set<String>>,
         ownerLogin: String?,
     ): List<Query> = buildList {
-        platforms.distinct().forEach { add(term("platforms", it.name)) }
-        ownerLogin?.let { add(term("owner_login.keyword", it)) }
+        platforms.distinct().forEach { add(term(ProjectFields.PLATFORMS, it.name)) }
+        ownerLogin?.let { add(term(ProjectFields.OWNER_LOGIN.keyword, it)) }
         addAll(targetFilterClauses(targetFilters))
     }
 
@@ -124,16 +124,18 @@ object OpenSearchQueryBuilder {
     private fun targetFilterClauses(targetFilters: Map<TargetGroup, Set<String>>): List<Query> = buildList {
         targetFilters.forEach { (group, targets) ->
             when (group) {
-                TargetGroup.JavaScript -> add(term("platforms", "JS"))
-                TargetGroup.Wasm -> add(term("platforms", "WASM"))
+                TargetGroup.JavaScript -> add(term(ProjectFields.PLATFORMS, "JS"))
+                TargetGroup.Wasm -> add(term(ProjectFields.PLATFORMS, "WASM"))
                 TargetGroup.JVM, TargetGroup.AndroidJvm -> {
                     val start = targets.mapNotNull { group.targets.indexOf(it).takeIf { i -> i >= 0 } }.minOrNull() ?: 0
-                    add(termsAny("targets", group.targets.drop(start).map { "${group.platformName}_$it" }))
+                    add(termsAny(ProjectFields.TARGETS, group.targets.drop(start).map { "${group.platformName}_$it" }))
                 }
 
                 else -> when {
-                    targets.isEmpty() -> add(termsAny("targets", group.targets.map { "${group.platformName}_$it" }))
-                    else -> targets.forEach { add(term("targets", "${group.platformName}_$it")) }
+                    targets.isEmpty() ->
+                        add(termsAny(ProjectFields.TARGETS, group.targets.map { "${group.platformName}_$it" }))
+
+                    else -> targets.forEach { add(term(ProjectFields.TARGETS, "${group.platformName}_$it")) }
                 }
             }
         }
