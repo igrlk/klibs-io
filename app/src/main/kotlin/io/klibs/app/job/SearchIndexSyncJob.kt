@@ -16,7 +16,12 @@ class SearchIndexSyncJob(
     private val searchIndexSync: SearchIndexSync,
 ) {
 
-    @Scheduled(initialDelay = 0, fixedRate = 10, timeUnit = TimeUnit.MINUTES)
+    @Scheduled(
+        scheduler = "searchIndexSyncScheduler",
+        initialDelay = 0,
+        fixedRate = 10,
+        timeUnit = TimeUnit.MINUTES,
+    )
     @Timed(
         value = "klibs.search.opensearch.sync.time",
         description = "Klibs: Time taken to rebuild the OpenSearch indices and swap their aliases",

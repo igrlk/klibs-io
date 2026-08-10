@@ -29,11 +29,6 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
-  task:
-    scheduling:
-      # A single scheduler thread lets long jobs starve the 10-minute search sync indefinitely.
-      pool:
-        size: ${SPRING_TASK_SCHEDULING_POOL_SIZE:2}
   docker:
     compose:
       enabled: false
