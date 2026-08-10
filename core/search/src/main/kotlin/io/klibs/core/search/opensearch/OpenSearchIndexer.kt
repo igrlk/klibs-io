@@ -3,6 +3,7 @@ package io.klibs.core.search.opensearch
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import io.klibs.core.search.configuration.properties.OpenSearchProperties
+import io.klibs.core.search.dto.opensearch.OpenSearchIndexSpec
 import org.opensearch.client.json.JsonpDeserializer
 import org.opensearch.client.json.jackson.JacksonJsonpMapper
 import org.opensearch.client.opensearch.OpenSearchClient
@@ -32,11 +33,11 @@ class OpenSearchIndexer(
     private val mapper: ObjectMapper,
 ) {
 
-    fun aliasExists(spec: IndexSpec): Boolean =
+    fun aliasExists(spec: OpenSearchIndexSpec): Boolean =
         client.indices().existsAlias { it.name(spec.alias) }.value()
 
-    fun sync(spec: IndexSpec, now: Instant = Instant.now()) {
-        val indices = currentTargets(spec.alias)
+    fun sync(spec: OpenSearchIndexSpec, now: Instant = Instant.now()) {
+        val indices = generationsOf(spec.alias)
         check(indices.size <= 1) {
             "alias '${spec.alias}' points at ${indices.size} indices $indices; " +
                     "refusing to rebuild until it points at one"
@@ -76,7 +77,7 @@ class OpenSearchIndexer(
         }
     }
 
-    private fun swapAlias(spec: IndexSpec, generation: String, current: String?) {
+    private fun swapAlias(spec: OpenSearchIndexSpec, generation: String, current: String?) {
         client.indices().updateAliases { updateRequest ->
             current?.let { old ->
                 updateRequest.actions { a -> a.remove { it.index(old).alias(spec.alias) } }
@@ -85,7 +86,7 @@ class OpenSearchIndexer(
         }
     }
 
-    private fun reap(spec: IndexSpec, newGen: String, now: Instant, live: String?) {
+    private fun reap(spec: OpenSearchIndexSpec, newGen: String, now: Instant, live: String?) {
         val stale = sameAliasIndices(spec)
             .filter { it != newGen && it != live }
             .filter { index -> spec.timestampOf(index)?.isBefore(now.minus(properties.reapMinAge)) == true }
@@ -109,13 +110,13 @@ class OpenSearchIndexer(
         }
     }
 
-    private fun sameAliasIndices(spec: IndexSpec): Set<String> =
+    private fun sameAliasIndices(spec: OpenSearchIndexSpec): Set<String> =
         client.indices().get { it.index(spec.currentAliasGlob) }.result().keys
 
-    private fun sameBaseIndices(spec: IndexSpec): Map<String, IndexState> =
+    private fun sameBaseIndices(spec: OpenSearchIndexSpec): Map<String, IndexState> =
         client.indices().get { it.index("${spec.base}*") }.result()
 
-    private fun currentTargets(alias: String): Set<String> {
+    private fun generationsOf(alias: String): Set<String> {
         val indicesClient = client.indices()
         if (!indicesClient.existsAlias { it.name(alias) }.value()) return emptySet()
 

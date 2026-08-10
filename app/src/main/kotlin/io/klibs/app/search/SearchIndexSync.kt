@@ -1,7 +1,6 @@
 package io.klibs.app.search
 
-import io.klibs.core.search.opensearch.IndexNaming
-import io.klibs.core.search.opensearch.IndexSpec
+import io.klibs.core.search.dto.opensearch.OpenSearchIndexSpec
 import io.klibs.core.search.opensearch.OpenSearchIndexer
 import net.javacrumbs.shedlock.core.LockConfiguration
 import net.javacrumbs.shedlock.core.LockingTaskExecutor
@@ -16,20 +15,20 @@ import java.time.Instant
 class SearchIndexSync(
     private val lockingTaskExecutor: LockingTaskExecutor,
     private val indexer: OpenSearchIndexer,
-    private val naming: IndexNaming,
+    private val indexSpecs: List<OpenSearchIndexSpec>,
 ) {
 
-    fun syncAll() = run(naming.all)
+    fun syncAll() = run(indexSpecs)
 
-    fun buildMissingAliases() = run(naming.all.filterNot { indexer.aliasExists(it) })
+    fun buildMissingAliases() = run(indexSpecs.filterNot { indexer.aliasExists(it) })
 
-    private fun run(targets: List<IndexSpec>) {
+    private fun run(targets: List<OpenSearchIndexSpec>) {
         val failures = targets.mapNotNull { runCatching { withLock(it) }.exceptionOrNull() }
         failures.forEach { log.error("OpenSearch index sync failed", it) }
         failures.firstOrNull()?.let { throw it }
     }
 
-    private fun withLock(spec: IndexSpec) {
+    private fun withLock(spec: OpenSearchIndexSpec) {
         val lock = LockConfiguration(
             Instant.now(),
             "searchIndexSync-${spec.base}-${spec.hash}",

@@ -1,11 +1,12 @@
 package io.klibs.app.search
 
 import BaseOpenSearchTest
-import io.klibs.core.search.opensearch.IndexNaming
+import io.klibs.core.search.dto.opensearch.OpenSearchIndexSpec
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.opensearch.client.opensearch.OpenSearchClient
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.test.context.jdbc.Sql
@@ -29,7 +30,12 @@ class SearchIndexReadinessTest : BaseOpenSearchTest() {
     private lateinit var client: OpenSearchClient
 
     @Autowired
-    private lateinit var naming: IndexNaming
+    @Qualifier("projectIndexSpec")
+    private lateinit var projectSpec: OpenSearchIndexSpec
+
+    @Autowired
+    @Qualifier("packageIndexSpec")
+    private lateinit var packageSpec: OpenSearchIndexSpec
 
     @Autowired
     private lateinit var mockMvc: MockMvc
@@ -58,8 +64,8 @@ class SearchIndexReadinessTest : BaseOpenSearchTest() {
                    OR name LIKE :packageLock
             """.trimIndent()
         )
-            .param("projectLock", "searchIndexSync-${naming.project.base}-%")
-            .param("packageLock", "searchIndexSync-${naming.packages.base}-%")
+            .param("projectLock", "searchIndexSync-${projectSpec.base}-%")
+            .param("packageLock", "searchIndexSync-${packageSpec.base}-%")
             .update()
     }
 
@@ -103,8 +109,8 @@ class SearchIndexReadinessTest : BaseOpenSearchTest() {
     }
 
     private fun String.isSearchIndex(): Boolean =
-        this == naming.project.base ||
-            this == naming.packages.base ||
-            startsWith("${naming.project.base}-") ||
-            startsWith("${naming.packages.base}-")
+        this == projectSpec.base ||
+            this == packageSpec.base ||
+            startsWith("${projectSpec.base}-") ||
+            startsWith("${packageSpec.base}-")
 }

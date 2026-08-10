@@ -101,8 +101,6 @@ klibs:
   indexing: ${KLIBS_ENABLE_INDEXING:false}
   search:
     opensearch:
-      connect-timeout: ${KLIBS_OPENSEARCH_CONNECT_TIMEOUT:5s}
-      socket-timeout: ${KLIBS_OPENSEARCH_SOCKET_TIMEOUT:30s}
       request-timeout: ${KLIBS_OPENSEARCH_REQUEST_TIMEOUT:30s}
   scheduling:
     process-indexing-queue:

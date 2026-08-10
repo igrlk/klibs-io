@@ -7,7 +7,7 @@ import io.klibs.core.pckg.model.PackageTarget
 import io.klibs.core.pckg.model.TargetGroup
 import io.klibs.core.search.controller.SearchSort
 import io.klibs.core.search.dto.repository.SearchPackageResult
-import io.klibs.core.search.opensearch.IndexNaming
+import io.klibs.core.search.dto.opensearch.OpenSearchIndexSpec
 import io.klibs.core.search.opensearch.OpenSearchQueryBuilder
 import io.klibs.core.search.opensearch.PackageFields
 import io.klibs.core.search.opensearch.keyword
@@ -15,6 +15,7 @@ import org.opensearch.client.opensearch.OpenSearchClient
 import org.opensearch.client.opensearch._types.SortOptions
 import org.opensearch.client.opensearch._types.SortOrder
 import org.opensearch.client.opensearch._types.query_dsl.Query
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Repository
 import java.time.LocalDateTime
@@ -24,10 +25,11 @@ import java.time.ZoneOffset
 @ConditionalOnProperty("klibs.search.opensearch.enabled", havingValue = "true")
 class PackageSearchRepositoryOpenSearch(
     client: OpenSearchClient,
-    naming: IndexNaming,
+    @Qualifier("packageIndexSpec")
+    indexSpec: OpenSearchIndexSpec,
 ) : AbstractOpenSearchSearchRepository<SearchPackageResult>(client), PackageSearchRepository {
 
-    override val indexName: String = naming.packages.alias
+    override val indexName: String = indexSpec.alias
 
     override val excludedSourceFields: List<String> = EXCLUDED_SOURCE_FIELDS
 

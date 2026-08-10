@@ -1,12 +1,12 @@
 package io.klibs.app.search
 
 import BaseOpenSearchTest
-import io.klibs.core.search.opensearch.IndexNaming
-import io.klibs.core.search.opensearch.IndexSpec
+import io.klibs.core.search.dto.opensearch.OpenSearchIndexSpec
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.opensearch.client.opensearch.OpenSearchClient
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.test.context.jdbc.Sql
@@ -27,7 +27,12 @@ class SearchIndexSyncTest : BaseOpenSearchTest() {
     private lateinit var searchIndexSync: SearchIndexSync
 
     @Autowired
-    private lateinit var naming: IndexNaming
+    @Qualifier("projectIndexSpec")
+    private lateinit var projectSpec: OpenSearchIndexSpec
+
+    @Autowired
+    @Qualifier("packageIndexSpec")
+    private lateinit var packageSpec: OpenSearchIndexSpec
 
     @Autowired
     private lateinit var client: OpenSearchClient
@@ -56,8 +61,8 @@ class SearchIndexSyncTest : BaseOpenSearchTest() {
                    OR name LIKE :packageLock
             """.trimIndent()
         )
-            .param("projectLock", "searchIndexSync-${naming.project.base}-%")
-            .param("packageLock", "searchIndexSync-${naming.packages.base}-%")
+            .param("projectLock", "searchIndexSync-${projectSpec.base}-%")
+            .param("packageLock", "searchIndexSync-${packageSpec.base}-%")
             .update()
     }
 
@@ -66,28 +71,28 @@ class SearchIndexSyncTest : BaseOpenSearchTest() {
     fun `the boot build publishes both aliases on an empty cluster`() {
         searchIndexSync.buildMissingAliases()
 
-        assertTrue(targetsOf(naming.project).isNotEmpty())
-        assertTrue(targetsOf(naming.packages).isNotEmpty())
+        assertTrue(targetsOf(projectSpec).isNotEmpty())
+        assertTrue(targetsOf(packageSpec).isNotEmpty())
     }
 
     @Test
     @Sql(value = [SEED])
     fun `the boot build leaves an already published generation in place`() {
         searchIndexSync.buildMissingAliases()
-        val serving = targetsOf(naming.project)
+        val serving = targetsOf(projectSpec)
 
         searchIndexSync.buildMissingAliases()
 
-        assertEquals(serving, targetsOf(naming.project))
+        assertEquals(serving, targetsOf(projectSpec))
     }
 
-    private fun targetsOf(spec: IndexSpec): Set<String> =
+    private fun targetsOf(spec: OpenSearchIndexSpec): Set<String> =
         if (!client.indices().existsAlias { it.name(spec.alias) }.value()) emptySet()
         else client.indices().getAlias { it.name(spec.alias) }.result().keys
 
     private fun String.isSearchIndex(): Boolean =
-        this == naming.project.base ||
-            this == naming.packages.base ||
-            startsWith("${naming.project.base}-") ||
-            startsWith("${naming.packages.base}-")
+        this == projectSpec.base ||
+            this == packageSpec.base ||
+            startsWith("${projectSpec.base}-") ||
+            startsWith("${packageSpec.base}-")
 }
