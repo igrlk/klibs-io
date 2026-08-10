@@ -14,6 +14,10 @@ import java.time.format.DateTimeFormatter
  * alias      project-a3f9c1e2
  * generation project-a3f9c1e2-20260730t101500
  * ```
+ *
+ * Readers only ever query the alias. Each build writes a new generation and the alias is swapped onto
+ * it in one atomic step, so a reader never sees a half-filled index. The hash in the alias covers
+ * settings, mappings and SQL, so changing any of them starts a new alias instead of mutating the live one.
  */
 class OpenSearchIndexSpec(
     val base: String,
