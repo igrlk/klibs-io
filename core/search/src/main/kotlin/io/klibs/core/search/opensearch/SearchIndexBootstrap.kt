@@ -1,4 +1,4 @@
-package io.klibs.app.search
+package io.klibs.core.search.opensearch
 
 import jakarta.annotation.PostConstruct
 import org.slf4j.LoggerFactory

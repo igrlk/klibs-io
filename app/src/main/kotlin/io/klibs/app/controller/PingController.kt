@@ -1,6 +1,6 @@
 package io.klibs.app.controller
 
-import io.klibs.app.search.SearchIndexReadiness
+import io.klibs.core.search.opensearch.SearchIndexReadiness
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping

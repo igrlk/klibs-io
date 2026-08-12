@@ -1,9 +1,6 @@
-package io.klibs.app.search
+package io.klibs.core.search.opensearch
 
 import io.klibs.core.search.dto.opensearch.OpenSearchIndexSpec
-import io.klibs.core.search.opensearch.OpenSearchIndexer
-import net.javacrumbs.shedlock.core.LockConfiguration
-import net.javacrumbs.shedlock.core.LockingTaskExecutor
 import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Component
@@ -13,7 +10,7 @@ import java.time.Instant
 @Component
 @ConditionalOnProperty("klibs.search.opensearch.enabled", havingValue = "true")
 class SearchIndexSync(
-    private val lockingTaskExecutor: LockingTaskExecutor,
+    private val searchIndexLock: SearchIndexLock,
     private val indexer: OpenSearchIndexer,
     private val indexSpecs: List<OpenSearchIndexSpec>,
 ) {
@@ -29,15 +26,9 @@ class SearchIndexSync(
     }
 
     private fun withLock(spec: OpenSearchIndexSpec) {
-        val lock = LockConfiguration(
-            Instant.now(),
-            "searchIndexSync-${spec.base}-${spec.hash}",
-            LOCK_AT_MOST_FOR,
-            LOCK_AT_LEAST_FOR,
-        )
+        val lock = LockSpec("searchIndexSync-${spec.base}-${spec.hash}", LOCK_AT_MOST_FOR, LOCK_AT_LEAST_FOR)
         val startedAt = Instant.now()
-        val task = LockingTaskExecutor.TaskWithResult<Unit> { indexer.sync(spec) }
-        if (!lockingTaskExecutor.executeWithLock(task, lock).wasExecuted()) {
+        if (!searchIndexLock.runLocked(lock) { indexer.sync(spec) }) {
             log.info("another pod holds '{}', skipping this run", lock.name)
             return
         }

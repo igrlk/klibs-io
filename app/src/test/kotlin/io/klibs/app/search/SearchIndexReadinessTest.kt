@@ -2,6 +2,7 @@ package io.klibs.app.search
 
 import BaseOpenSearchTest
 import io.klibs.core.search.dto.opensearch.OpenSearchIndexSpec
+import io.klibs.core.search.opensearch.SearchIndexSync
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.opensearch.client.opensearch.OpenSearchClient

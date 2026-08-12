@@ -1,7 +1,6 @@
-package io.klibs.app.search
+package io.klibs.core.search.opensearch
 
 import io.klibs.core.search.dto.opensearch.OpenSearchIndexSpec
-import io.klibs.core.search.opensearch.OpenSearchIndexer
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Component
 import java.util.concurrent.atomic.AtomicBoolean

@@ -1,6 +1,6 @@
 package io.klibs.app.job
 
-import io.klibs.app.search.SearchIndexSync
+import io.klibs.core.search.opensearch.SearchIndexSync
 import io.micrometer.core.annotation.Timed
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.scheduling.annotation.Scheduled
