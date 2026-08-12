@@ -70,7 +70,7 @@ class OpenSearchIndexer(
         // Parse per batch rather than up front: the whole projection as ObjectNodes is several times
         // its ~9MB of JSON, and only one batch is ever needed at a time.
         rows.chunked(BATCH).forEach { chunk ->
-            bulkIndex(newIndex, rows.map { mapper.readTree(it) as ObjectNode }, spec.idOf)
+            bulkIndex(newIndex, chunk.map { mapper.readTree(it) as ObjectNode }, spec.idOf)
         }
         // Bulk-written docs aren't searchable until a refresh (default interval 1s).
         // Force it, so alias can swap successfully.
