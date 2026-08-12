@@ -14,7 +14,6 @@ import org.opensearch.client.opensearch.OpenSearchClient
 import org.opensearch.client.opensearch._types.SortOptions
 import org.opensearch.client.opensearch._types.SortOrder
 import org.opensearch.client.opensearch._types.query_dsl.Query
-import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Repository
 import java.time.LocalDateTime
@@ -24,11 +23,10 @@ import java.time.ZoneOffset
 @ConditionalOnProperty("klibs.search.opensearch.enabled", havingValue = "true")
 class ProjectSearchRepositoryOpenSearch(
     client: OpenSearchClient,
-    @Qualifier("projectIndexSpec")
-    indexSpec: OpenSearchIndexSpec,
+    projectIndexSpec: OpenSearchIndexSpec,
 ) : AbstractOpenSearchSearchRepository<SearchProjectResult>(client), ProjectSearchRepository {
 
-    override val indexName: String = indexSpec.alias
+    override val indexName: String = projectIndexSpec.alias
 
     override val excludedSourceFields: List<String> = EXCLUDED_SOURCE_FIELDS
 
