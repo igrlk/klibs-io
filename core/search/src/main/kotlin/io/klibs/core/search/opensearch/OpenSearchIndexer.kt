@@ -33,6 +33,15 @@ class OpenSearchIndexer(
         client.indices().existsAlias { it.name(spec.alias) }.value()
 
     fun sync(spec: OpenSearchIndexSpec) {
+        val (oldIndex, newIndex) = createNewIndex(spec)
+
+        val rows = fillNewIndexWithFreshData(spec, newIndex)
+
+        swapAlias(spec, newIndex, oldIndex)
+        log.info("swapped alias '{}' onto '{}' with {} docs", spec.alias, newIndex, rows.size)
+    }
+
+    private fun createNewIndex(spec: OpenSearchIndexSpec): Pair<String?, String> {
         val indices = servingIndices(spec.alias)
         check(indices.size <= 1) {
             "alias '${spec.alias}' points at ${indices.size} indices $indices; " +
@@ -48,21 +57,25 @@ class OpenSearchIndexer(
                 .settings(parse(spec.settings, IndexSettings._DESERIALIZER))
                 .mappings(parse(withMeta(spec.mappings, spec.hash), TypeMapping._DESERIALIZER))
         }
+        return Pair(serving, target)
+    }
 
+    private fun fillNewIndexWithFreshData(
+        spec: OpenSearchIndexSpec,
+        newIndex: String
+    ): List<String?> {
         val rows = jdbcClient.sql(spec.sql).query(String::class.java).list()
         check(rows.isNotEmpty()) { "projection for '${spec.alias}' returned no rows; refusing to swap onto an empty index" }
 
         // Parse per batch rather than up front: the whole projection as ObjectNodes is several times
         // its ~9MB of JSON, and only one batch is ever needed at a time.
         rows.chunked(BATCH).forEach { chunk ->
-            bulkIndex(target, chunk.map { mapper.readTree(it) as ObjectNode }, spec.idOf)
+            bulkIndex(newIndex, rows.map { mapper.readTree(it) as ObjectNode }, spec.idOf)
         }
         // Bulk-written docs aren't searchable until a refresh (default interval 1s).
         // Force it, so alias can swap successfully.
-        client.indices().refresh { it.index(target) }
-
-        swapAlias(spec, target, serving)
-        log.info("swapped alias '{}' onto '{}' with {} docs", spec.alias, target, rows.size)
+        client.indices().refresh { it.index(newIndex) }
+        return rows
     }
 
     private fun bulkIndex(index: String, batch: List<ObjectNode>, idOf: (ObjectNode) -> String) {
