@@ -99,8 +99,8 @@ class OpenSearchConfiguration {
         .setMaxConnTotal(MAX_CONN_TOTAL)
         .setDefaultConnectionConfig(
             ConnectionConfig.custom()
-                .setConnectTimeout(Timeout.ofSeconds(1))
-                .setSocketTimeout(Timeout.ofSeconds(30))
+                .setConnectTimeout(Timeout.ofSeconds(CONNECTION_TIMEOUT))
+                .setSocketTimeout(Timeout.ofSeconds(SOCKET_TIMEOUT))
                 .build()
         )
         .setTlsStrategy(
@@ -115,5 +115,7 @@ class OpenSearchConfiguration {
         const val OPENSEARCH_SSL_BUNDLE = "opensearch"
         const val MAX_CONN_PER_ROUTE = 10
         const val MAX_CONN_TOTAL = 30
+        const val CONNECTION_TIMEOUT = 1L
+        const val SOCKET_TIMEOUT = 30L
     }
 }
