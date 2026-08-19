@@ -32,13 +32,15 @@ class OpenSearchIndexer(
     fun aliasExists(spec: OpenSearchIndexSpec): Boolean =
         client.indices().existsAlias { it.name(spec.alias) }.value()
 
-    fun sync(spec: OpenSearchIndexSpec) {
+    /** @return the number of documents written into the rebuilt index. */
+    fun sync(spec: OpenSearchIndexSpec): Int {
         val (oldIndex, newIndex) = createNewIndex(spec)
 
         val rows = fillNewIndexWithFreshData(spec, newIndex)
 
         swapAlias(spec, newIndex, oldIndex)
         log.info("swapped alias '{}' onto '{}' with {} docs", spec.alias, newIndex, rows.size)
+        return rows.size
     }
 
     private fun createNewIndex(spec: OpenSearchIndexSpec): Pair<String?, String> {
