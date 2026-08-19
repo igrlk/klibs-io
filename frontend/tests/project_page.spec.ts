@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '@uiverify/playwright';
 import { ProjectPage } from './pages/ProjectPage';
 
 test.describe('Project page (Arrow)', () => {

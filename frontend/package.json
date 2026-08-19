@@ -15,7 +15,8 @@
     "pw:install": "playwright install --with-deps",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:report": "playwright show-report"
+    "test:e2e:report": "playwright show-report",
+    "test:visual": "playwright test tests/faq_page.spec.ts tests/not_found_page.spec.ts tests/main_page.spec.ts tests/project_page.spec.ts tests/author_page.spec.ts tests/organization_page.spec.ts --reporter=line"
   },
   "dependencies": {
     "@jetbrains/kotlin-web-site-ui": "^4.14.2",
@@ -54,6 +55,7 @@
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "@uiverify/playwright": "^1.0.2",
     "eslint": "^8",
     "eslint-config-next": "14.2.9",
     "typescript": "^5"

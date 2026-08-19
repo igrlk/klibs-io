@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '@uiverify/playwright';
 
 test.describe('Not found page', () => {
       test.beforeEach(async ({ page }) => {
