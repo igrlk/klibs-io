@@ -93,3 +93,13 @@
         transform: rotate(360deg) translateX(0px);
     }
 }
+
+@media (prefers-reduced-motion: reduce) {
+    .img1, .img2, .img3 {
+        animation: none;
+    }
+    .slackGuide:target,
+    .slackGuide:target + p {
+        animation: none;
+    }
+}

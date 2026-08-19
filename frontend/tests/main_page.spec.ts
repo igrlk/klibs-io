@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '@uiverify/playwright';
 import { MainPage } from './pages/MainPage';
 
 test.describe('Main page', () => {
@@ -61,6 +61,11 @@ test.describe('Main page', () => {
         await seeAllButton.click();
 
         await expect(page).toHaveURL(new RegExp(`\\?category=${categorySlug}`));
+
+        // Wait for the category results to load so the capture is the loaded
+        // state, not the loading spinner.
+        await page.getByAltText('Kodee spinning').first().waitFor({ state: 'detached', timeout: 15000 });
+        await page.waitForLoadState('networkidle');
     });
 
     test('Top tags expand and collapse correctly', async ({ page }) => {
@@ -89,6 +94,11 @@ test.describe('Main page', () => {
         await discoverButton.click();
 
         await expect(page).toHaveURL(/\?category=grant-winners/);
+
+        // Wait for the category results to load so the capture is the loaded
+        // state, not the loading spinner.
+        await page.getByAltText('Kodee spinning').first().waitFor({ state: 'detached', timeout: 15000 });
+        await page.waitForLoadState('networkidle');
     });
 
     test('Click on "Submit your project" button on the Kotlin Grant Winner banner opens the Kotlin Foundation grants page', async ({ page }) => {

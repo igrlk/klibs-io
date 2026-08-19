@@ -2,6 +2,8 @@
 
 import Image from "next/image";
 
+import { isUIVerify } from "@/app/isUIVerify";
+
 // Define an array of image paths or URLs
 import kodeeFrightened from '@/app/img/kodee/kodee-frightened.png';
 import kodeeFrustrated from '@/app/img/kodee/kodee-frustrated.png';
@@ -21,7 +23,9 @@ const images = [
 ];
 
 export default function KodeeNotFound() {
-    const kodeeImgSrc = images[Math.floor(Math.random() * 6)];
+    // Random-in-render bakes a different sprite into every visual-test capture,
+    // so pin it while UI Verify captures; keep the random mascot in production.
+    const kodeeImgSrc = isUIVerify() ? images[2] : images[Math.floor(Math.random() * 6)];
 
     return (
         <Image

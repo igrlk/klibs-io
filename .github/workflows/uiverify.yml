@@ -1,0 +1,61 @@
+name: UI Verify (visual)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths: ['frontend/**']
+  pull_request:
+    paths: ['frontend/**']
+
+jobs:
+  visual:
+    runs-on: ubuntu-latest
+    # Node 20, Chromium and all its system libraries are pre-baked here, so CI
+    # never runs apt (which was hanging on the Ubuntu mirror). Tag matches the
+    # frontend's @playwright/test version so the browser build lines up.
+    container:
+      image: mcr.microsoft.com/playwright:v1.55.0-noble
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      NEXT_PUBLIC_API_URL: https://api.klibs.io
+      NEXT_PUBLIC_METADATA_URL: https://klibs.io
+      NEXT_TELEMETRY_DISABLED: '1'
+      # Signals isUIVerify() at SSR so random-in-render (kodee sprite) is
+      # deterministic during capture. Unset in production.
+      UI_VERIFY: '1'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # The Playwright image ships Node 20; use the latest LTS instead.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      # Inside the container the checkout is owned by a different uid, so git
+      # refuses to run ("dubious ownership"); the upload reads git for the
+      # commit/branch, so mark the workspace safe.
+      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Capture screens with @uiverify/playwright
+        run: |
+          npm run start &
+          npx --yes wait-on -t 120000 http://localhost:3000
+          npm run test:visual
+
+      - name: Upload to UI Verify
+        env:
+          UIVERIFY_API_KEY: ${{ secrets.UIVERIFY_API_KEY }}
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/master" ]; then
+            npx -y uiverify@latest upload --static-dir ./uiverify-archive --auto-accept-changes
+          else
+            npx -y uiverify@latest upload --static-dir ./uiverify-archive
+          fi

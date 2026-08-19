@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import styles from './background-squares.module.css';
+import { isUIVerify } from '@/app/isUIVerify';
 
 interface Square {
     baseX: number;
@@ -13,8 +14,24 @@ interface Square {
     phase: number;
 }
 
+// A local, reset-able RNG for deterministic capture. The global Math.random
+// (even seeded) is consumed by React and other components before this runs, by
+// a varying amount, so sharing it flakes. Under UI Verify capture we use this
+// local RNG (reset per layout); in production we keep Math.random so real users
+// get a fresh layout each load. `activeRandom` is chosen in generateSquares.
+let rngState = 0x2f6e2b1 >>> 0;
+const resetLocalRng = () => { rngState = 0x2f6e2b1 >>> 0; };
+const localRandom = () => {
+    rngState ^= rngState << 13;
+    rngState ^= rngState >>> 17;
+    rngState ^= rngState << 5;
+    rngState >>>= 0;
+    return (rngState >>> 0) / 0xffffffff;
+};
+let activeRandom: () => number = Math.random;
+
 const getRandomInRange = (min: number, max: number) =>
-    Math.random() * (max - min) + min;
+    activeRandom() * (max - min) + min;
 
 const SQUARES_COUNT = { min: 12, max: 20 };
 
@@ -36,6 +53,12 @@ export const BackgroundSquares: React.FC<BackgroundSquaresProps> = ({ debug = fa
     const lastTimeRef = useRef<number>(0);
 
     const generateSquares = useCallback((width: number, height: number): Square[] => {
+        if (isUIVerify()) {
+            activeRandom = localRandom;
+            resetLocalRng();
+        } else {
+            activeRandom = Math.random;
+        }
         const count = Math.floor(getRandomInRange(SQUARES_COUNT.min, SQUARES_COUNT.max));
 
         const squares: Square[] = [];
@@ -65,14 +88,14 @@ export const BackgroundSquares: React.FC<BackgroundSquaresProps> = ({ debug = fa
 
         for (let i = 0; i < count; i++) {
             const radius = getRandomInRange(8, 16);
-            const size = Math.random() > 0.5 ? 4 : 8;
+            const size = activeRandom() > 0.5 ? 4 : 8;
 
             let baseX: number;
             let baseY: number;
             let attempts = 0;
 
             do {
-                baseX = Math.max(minX, Math.min(maxX, width - Math.pow(Math.random(), 0.7) * width));
+                baseX = Math.max(minX, Math.min(maxX, width - Math.pow(activeRandom(), 0.7) * width));
                 baseY = getRandomInRange(minY, maxY);
                 attempts++;
             } while (isOverlapping(baseX, baseY, size, radius) && attempts < maxAttempts);
@@ -85,10 +108,10 @@ export const BackgroundSquares: React.FC<BackgroundSquaresProps> = ({ debug = fa
                     x: baseX,
                     y: baseY,
                     size,
-                    angle: Math.random() * Math.PI * 2,
+                    angle: activeRandom() * Math.PI * 2,
                     speed: getRandomInRange(SPEED.min, SPEED.max),
                     radius,
-                    phase: Math.random() * Math.PI * 2,
+                    phase: activeRandom() * Math.PI * 2,
                 });
             }
         }
@@ -166,8 +189,14 @@ export const BackgroundSquares: React.FC<BackgroundSquaresProps> = ({ debug = fa
         updateCanvasSize();
         window.addEventListener('resize', updateCanvasSize);
 
-        // Start animation
-        animationFrameRef.current = requestAnimationFrame(animate);
+        // A moving canvas animation makes every visual-test capture differ, so
+        // draw one static frame while UI Verify captures; animate for real users.
+        if (isUIVerify()) {
+            const ctx = canvas.getContext('2d');
+            if (ctx) draw(ctx);
+        } else {
+            animationFrameRef.current = requestAnimationFrame(animate);
+        }
 
         return () => {
             window.removeEventListener('resize', updateCanvasSize);
@@ -175,7 +204,7 @@ export const BackgroundSquares: React.FC<BackgroundSquaresProps> = ({ debug = fa
                 cancelAnimationFrame(animationFrameRef.current);
             }
         };
-    }, [generateSquares, animate]);
+    }, [generateSquares, animate, draw]);
 
     return (
         <canvas
