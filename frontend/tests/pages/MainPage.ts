@@ -24,6 +24,22 @@ export class MainPage {
   async open() {
     await this.page.goto('/');
     await this.acceptCookiesIfPresent();
+    await this.waitForLoaded();
+  }
+
+  // The category sections AND the top-tags filter each fetch on the client and
+  // show skeletons until ready. Wait for the real content of both so the
+  // capture is the loaded state, not a skeleton.
+  async waitForLoaded() {
+    await this.page
+      .locator('[data-testid^="category-section-"] a[href^="/project/"]')
+      .first()
+      .waitFor({ state: 'visible', timeout: 15000 });
+    await this.page
+      .getByRole('tab')
+      .first()
+      .waitFor({ state: 'visible', timeout: 15000 });
+    await this.page.waitForLoadState('networkidle');
   }
 
   async acceptCookiesIfPresent() {

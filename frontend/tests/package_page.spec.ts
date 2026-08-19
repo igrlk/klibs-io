@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '@uiverify/playwright';
 
 test.describe('Package page (OkCurl)', () => {
     test.beforeEach(async ({ page }) => {

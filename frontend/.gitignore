@@ -45,3 +45,16 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 /.playwright-cli/
+
+# UI Verify capture output
+/uiverify-archive/
+
+# temp capture comparison dirs
+/frontend/dA/
+/frontend/dB/
+/frontend/cA/
+/frontend/cB/
+/frontend/mA/
+/frontend/mB/
+/frontend/base_final/
+/frontend/diff_final/
